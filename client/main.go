@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+	"os/signal"
+	"syscall"
 
 	"github.com/op/go-logging"
 	"github.com/pkg/errors"
@@ -112,4 +114,21 @@ func main() {
 
 	client := common.NewClient(clientConfig)
 	client.StartClientLoop()
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGTERM)
+	done := make(chan bool, 1)
+	go func() {
+		client.StopClientLoop()
+		done <- true
+	}()
+	
+	select{
+		case <-done:
+			log.Infof("action: client_finished | result: success | client_id: %s", clientConfig.ID)
+		case <-sigs:
+			log.Infof("action: signal_handler | result: success | client_id: %s", clientConfig.ID)
+			log.Infof("action: close_resource | result: success | resource: os_signal_channel | client_id: %s", clientConfig.ID)
+			os.Exit(0)
+	}
 }
