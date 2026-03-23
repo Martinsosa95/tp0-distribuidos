@@ -16,6 +16,8 @@ services:
       - LOGGING_LEVEL=DEBUG
     networks:
       - testing_net
+    volumes:
+      - ./server/config.ini:/config.ini
 """
 
     for i in range(1, cantidad_clientes + 1):
@@ -25,12 +27,14 @@ services:
       image: client:latest
       entrypoint: /client
       environment:
-      - CLI_ID={i}
-      - CLI_LOG_LEVEL=DEBUG
+        - CLI_ID={i}
+        - CLI_LOG_LEVEL=DEBUG
       networks:
-      - testing_net
+        - testing_net
       depends_on:
-      - server
+        - server
+      volumes:
+        - ./client/config.yaml:/config.yaml
     """
 
     compose_content += """
