@@ -1,5 +1,6 @@
 import socket
 import logging
+import signal
 
 
 class Server:
@@ -8,6 +9,20 @@ class Server:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
+
+        self._running = True
+
+        signal.signal(signal.SIGTERM, self.__handle_signal)
+
+    def __handle_signal(self, signum, frame):
+        """Handle SIGTERM signal to gracefully shutdown the server"""
+        logging.info("action: signal_handler | result: success | signal: SIGTERM")
+        self._running = False
+        try:
+            self._server_socket.close()
+            logging.info("action: close_resource | result: success | resource: server_socket")
+        except Exception as e:
+            logging.error(f"action: close_resource | result: fail | resource: server_socket | error: {e}")
 
     def run(self):
         """
