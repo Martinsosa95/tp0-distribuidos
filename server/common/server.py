@@ -19,6 +19,7 @@ class Server:
         logging.info("action: signal_handler | result: success | signal: SIGTERM")
         self._running = False
         try:
+            self._server_socket.shutdown(socket.SHUT_RDWR)
             self._server_socket.close()
             logging.info("action: close_resource | result: success | resource: server_socket")
         except Exception as e:
