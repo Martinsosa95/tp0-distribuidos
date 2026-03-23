@@ -113,13 +113,12 @@ func main() {
 	}
 
 	client := common.NewClient(clientConfig)
-	client.StartClientLoop()
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGTERM)
 	done := make(chan bool, 1)
 	go func() {
-		client.StopClientLoop()
+		client.StartClientLoop()
 		done <- true
 	}()
 	
