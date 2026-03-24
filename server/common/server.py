@@ -69,8 +69,9 @@ class Server:
                     logging.error(f"action: apuesta_recibida | result: fail | cantidad: {len(data_apuestas) if data_apuestas else 0}")
                     protocolo.enviar_ack(ERROR_ACK)
             elif opcode == Protocolo.NOTIFICACION and data_apuestas:
-                self.agencies_finished += 1
-                if self.agencies_finished == len(self.agencies):
+                agencia_id = int(data_apuestas)
+                self.agencies_finished.add(agencia_id)
+                if len(self.agencies_finished) == len(self.agencies):
                     self.sorteo = True
                     logging.info("action: sorteo | result: success")
                 protocolo.enviar_ack(SUCCESS_ACK)
