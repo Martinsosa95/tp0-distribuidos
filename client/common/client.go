@@ -75,11 +75,11 @@ func (c *Client) StartClientLoop() {
 
 		apuesta := Apuesta{
 			Agencia:    c.config.ID,
-			Nombre:     c.config.Nombre,
-			Apellido:   c.config.Apellido,
-			Documento:  c.config.Documento,
-			Nacimiento: c.config.Nacimiento,
-			Numero:     c.config.Numero,
+			Nombre:     record[0],
+			Apellido:   record[1],
+			Documento:  record[2],
+			Nacimiento: record[3],
+			Numero:     record[4],
 		}
 		batch = append(batch, apuesta)
 		
