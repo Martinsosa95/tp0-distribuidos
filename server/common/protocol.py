@@ -33,4 +33,4 @@ class Protocolo:
         }
 
     def enviar_ack(self):
-        self.socket.sendall(b'ACK')
+        self.socket.sendall(b'\x00')
