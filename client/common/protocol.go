@@ -151,7 +151,7 @@ func (p *Protocolo) EnviarConsulta(agencia string) ([]string, error) {
 
 	respPayload := make([]byte, respLen)
 	io.ReadFull(p.conn, respPayload)
-	return strings.Split(string(respPayload), ","), nil
+	return strings.Split(string(respPayload), "\n"), nil
 }
 
 func (p *Protocolo) Close() error {
