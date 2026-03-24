@@ -24,12 +24,12 @@ class Protocolo:
 
         fields = payload.decode().split('|')
         return {
-            'agencia': fields[0],
-            'nombre': fields[1],
-            'apellido': fields[2],
-            'dni': fields[3],
-            'nacimiento': fields[4],
-            'numero': fields[5],
+            'agency': fields[0],
+            'first_name': fields[1],
+            'last_name': fields[2],
+            'document': fields[3],
+            'birth_date': fields[4],
+            'number': fields[5],
         }
 
     def enviar_ack(self):
