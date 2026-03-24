@@ -2,17 +2,21 @@ import socket
 import logging
 import signal
 from common.protocol import Protocolo
-from common.utils import Bet, store_bets
+from common.utils import Bet, store_bets, SUCCESS_ACK, ERROR_ACK, NOT_READY_ACK, load_bets, has_won
 
 
 class Server:
-    def __init__(self, port, listen_backlog):
+    def __init__(self, port, listen_backlog, expected_agencies):
         # Initialize server socket
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
         self._running = True
         signal.signal(signal.SIGTERM, self.__handle_signal)
+
+        self.expected_agencies = expected_agencies
+        self.agencies_finished = 0
+        self.sorteo = False
 
     def __handle_signal(self, signum, frame):
         """Handle SIGTERM signal to gracefully shutdown the server"""
@@ -49,17 +53,36 @@ class Server:
         try:
             protocolo = Protocolo(client_sock)
             logging.info("action: handle_connection | result: in_progress")
-            data_apuestas = protocolo.recibir_batch()
+            opcode, data_apuestas = protocolo.recibir_mensaje()
 
-            if data_apuestas:
+            if opcode == Protocolo.BATCH_APUESTAS and data_apuestas:
                 try:
                     bets = [Bet(**data_apuesta) for data_apuesta in data_apuestas]
                     store_bets(bets)
-                    protocolo.enviar_ack()
-
+                    protocolo.enviar_ack(SUCCESS_ACK)
                     logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
                 except Exception as e:
                     logging.error(f"action: apuesta_recibida | result: fail | cantidad: {len(data_apuestas) if data_apuestas else 0}")
+                    protocolo.enviar_ack(ERROR_ACK)
+            elif opcode == Protocolo.NOTIFICACION and data_apuestas:
+                self.agencies_finished += 1
+                if self.agencies_finished == self.expected_agencies:
+                    self.sorteo = True
+                    logging.info("action: sorteo | result: success")
+                protocolo.enviar_ack(SUCCESS_ACK)
+            elif opcode == Protocolo.CONSULTA and data_apuestas:
+                if self.sorteo:
+                    agencia_id = data_apuestas
+                    ganadores = []
+                    for bet in load_bets():
+                        if bet.agency == int(agencia_id) and has_won(bet):
+                            ganadores.append(bet.document)
+                    protocolo.enviar_ganadores(ganadores)
+                else:
+                    protocolo.enviar_ack(NOT_READY_ACK)
+                    logging.info("action: consulta_recibida | result: success | sorteo_listo: false")
+
+
 
         except Exception as e:
             logging.error(f"action: apuesta_recibida | result: fail | cantidad: {len(data_apuestas) if data_apuestas else 0}")
