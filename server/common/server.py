@@ -1,6 +1,8 @@
 import socket
 import logging
 import signal
+import threading
+
 from common.protocol import Protocolo
 from common.utils import Bet, store_bets, SUCCESS_ACK, ERROR_ACK, NOT_READY_ACK, load_bets, has_won
 
@@ -17,6 +19,10 @@ class Server:
         self.agencies = set()
         self.agencies_finished = set()
         self.sorteo = False
+
+        self.file_lock = threading.Lock()
+        self.state_lock = threading.Lock()
+        self.threads = []
 
     def __handle_signal(self, signum, frame):
         """Handle SIGTERM signal to gracefully shutdown the server"""
@@ -40,7 +46,12 @@ class Server:
         while self._running:
             client_sock = self.__accept_new_connection()
             if client_sock:
-                self.__handle_client_connection(client_sock)
+                client_thread = threading.Thread(target=self.__handle_client_connection, args=(client_sock,))
+                client_thread.start()
+                self.threads.append(client_thread)
+        for thread in self.threads:
+            thread.join()
+
         logging.info("action: server_shutdown | result: success")
 
     def __handle_client_connection(self, client_sock):
@@ -58,11 +69,11 @@ class Server:
             if opcode == Protocolo.BATCH_APUESTAS and data_apuestas:
                 try:
                     bets = [Bet(**data_apuesta) for data_apuesta in data_apuestas]
-
-                    for bet in bets:
-                        self.agencies.add(bet.agency)
-                    
-                    store_bets(bets)
+                    with self.state_lock:
+                        for bet in bets:
+                            self.agencies.add(bet.agency)
+                    with self.file_lock:
+                        store_bets(bets)
                     protocolo.enviar_ack(SUCCESS_ACK)
                     logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
                 except Exception as e:
@@ -79,9 +90,10 @@ class Server:
                 if self.sorteo:
                     agencia_id = data_apuestas
                     ganadores = []
-                    for bet in load_bets():
-                        if bet.agency == int(agencia_id) and has_won(bet):
-                            ganadores.append(bet.document)
+                    with self.file_lock:
+                        for bet in load_bets():
+                            if bet.agency == int(agencia_id) and has_won(bet):
+                                ganadores.append(bet.document)
                     protocolo.enviar_ganadores(ganadores)
                 else:
                     protocolo.enviar_ack(NOT_READY_ACK)
