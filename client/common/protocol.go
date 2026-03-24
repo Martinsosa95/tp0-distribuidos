@@ -38,11 +38,6 @@ func (p *Protocolo) EnviarApuesta(apuesta Apuesta) error {
 		apuesta.Numero,
 	)
 
-	log.Infof(
-		"action: send_data | result: in_progress | payload: %s",
-		payloadStr,
-	)
-
 	payload := []byte(payloadStr)
 
 	l := uint32(len(payload))
