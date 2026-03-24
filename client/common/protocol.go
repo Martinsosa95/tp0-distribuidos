@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"io"
 	"net"
+
+	"github.com/op/go-logging"
 )
+
+var log = logging.MustGetLogger("log")
 
 type Apuesta struct {
 	Agencia   string

@@ -48,7 +48,7 @@ class Server:
         """
         try:
             protocolo = Protocolo(client_sock)
-            logging.info("action: handle_connection | result: receiving_data")
+            logging.info("action: handle_connection | result: in_progress")
             data_apuesta = protocolo.recibir_apuesta()
 
             if data_apuesta:
