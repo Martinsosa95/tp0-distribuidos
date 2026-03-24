@@ -1,4 +1,7 @@
 
+import logging
+
+
 class Protocolo:
     def __init__(self, socket):
         self.socket = socket
@@ -13,15 +16,17 @@ class Protocolo:
         return data
 
     def recibir_apuesta(self):
+        logging.debug("action: recibir_apuesta_lectura | result: in_progress")
         data = self.recv_exactly(4)
         if data is None:
             return None
 
         payload_length = int.from_bytes(data, byteorder='big')
+        logging.debug(f"DEBUG: Header recibido. Esperando payload de {payload_length} bytes...")
         payload = self.recv_exactly(payload_length)
         if payload is None:
             return None
-
+        logging.info(f"DEBUG: Payload recibido correctamente.\nContenido: {payload.decode()}")
         fields = payload.decode().split('|')
         return {
             'agency': fields[0],

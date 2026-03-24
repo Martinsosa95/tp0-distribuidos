@@ -38,6 +38,11 @@ func (p *Protocolo) EnviarApuesta(apuesta Apuesta) error {
 		apuesta.Numero,
 	)
 
+	log.Infof(
+		"action: send_data | result: in_progress | payload: %s",
+		payloadStr,
+	)
+
 	payload := []byte(payloadStr)
 
 	l := uint32(len(payload))
@@ -47,20 +52,29 @@ func (p *Protocolo) EnviarApuesta(apuesta Apuesta) error {
 		byte(l >> 8),
 		byte(l),
 	}
-	
+	log.Infof(
+		"action: send_data_header | result: in_progress "
+	)
 	if _, err := p.conn.Write(header); err != nil {
 		return err
 	}
-
+	log.Infof(
+		"action: send_data_payload | result: in_progress "
+	)
 	if _, err := p.conn.Write(payload); err != nil {
 		return err
 	}
 
+	log.Infof(
+		"Esperando ACK del servidor... | action: wait_for_ack | result: in_progress "
+	)
 	ack := make([]byte, 1)
 	if _, err := io.ReadFull(p.conn, ack); err != nil {
 		return err
 	}
-
+	log.Infof(
+		"ACK recibido del servidor. | action: wait_for_ack | result: success "
+	)
 	return nil
 }
 

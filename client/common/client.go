@@ -78,6 +78,12 @@ func (c *Client) StartClientLoop() {
 			)
 			continue
 		}
+
+		log.Infof(
+			"action: connect | result: success | client_id: %v | server_address: %v",
+			c.config.ID,
+			c.config.ServerAddress,
+		)
 		err = protocol.EnviarApuesta(apuesta)
 		if err != nil {
 			log.Errorf(
