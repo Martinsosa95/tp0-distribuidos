@@ -128,6 +128,7 @@ func main() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGTERM)
 	done := make(chan bool, 1)
+	log.Infof("action: client_started | result: success | client_id: %s", clientConfig.ID)
 	go func() {
 		client.StartClientLoop()
 		done <- true

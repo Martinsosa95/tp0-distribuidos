@@ -67,6 +67,12 @@ func (c *Client) StartClientLoop() {
 		Nacimiento: c.config.Nacimiento,
 		Numero:     c.config.Numero,
 	}
+	log.Infof(
+		"action: start_client_loop | result: success | client_id: %v | loop_amount: %v | loop_period: %v",
+		c.config.ID,
+		c.config.LoopAmount,
+		c.config.LoopPeriod,
+	)
 	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
 		// Create the connection the server in every loop iteration. Send an
 		protocol, err := Connect(c.config.ServerAddress)
