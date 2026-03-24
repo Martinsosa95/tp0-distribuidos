@@ -40,6 +40,12 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("loop", "amount")
 	v.BindEnv("log", "level")
 
+	v.BindEnv("nombre")
+	v.BindEnv("apellido")
+	v.BindEnv("documento")
+	v.BindEnv("nacimiento")
+	v.BindEnv("numero")
+
 	// Try to read configuration from config file. If config file
 	// does not exists then ReadInConfig will fail but configuration
 	// can be loaded from the environment variables so we shouldn't
@@ -89,6 +95,11 @@ func PrintConfig(v *viper.Viper) {
 		v.GetInt("loop.amount"),
 		v.GetDuration("loop.period"),
 		v.GetString("log.level"),
+		v.GetString("nombre"),
+		v.GetString("apellido"),
+		v.GetString("documento"),
+		v.GetString("nacimiento"),
+		v.GetString("numero"),
 	)
 }
 
