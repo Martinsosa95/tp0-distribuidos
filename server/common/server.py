@@ -70,7 +70,7 @@ class Server:
                     protocolo.enviar_ack(ERROR_ACK)
             elif opcode == Protocolo.NOTIFICACION and data_apuestas:
                 self.agencies_finished += 1
-                if len(self.agencies_finished) == len(self.agencies):
+                if self.agencies_finished == len(self.agencies):
                     self.sorteo = True
                     logging.info("action: sorteo | result: success")
                 protocolo.enviar_ack(SUCCESS_ACK)
