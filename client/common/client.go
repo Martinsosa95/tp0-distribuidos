@@ -91,6 +91,10 @@ func (c *Client) StartClientLoop() {
 
 			time.Sleep(c.config.LoopPeriod)
 		}
+
+	}
+	if len(batch) > 0 {
+		c.enviarBatch(batch)
 	}
 }
 
