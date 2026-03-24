@@ -1,7 +1,7 @@
 
 import logging
 
-from server.common.utils import SUCCESS_ACK
+from common.utils import SUCCESS_ACK
 
 
 class Protocolo:
