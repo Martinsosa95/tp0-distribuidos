@@ -20,6 +20,19 @@ type Protocolo struct {
 	conn net.Conn
 }
 
+
+const (
+	OpcodeBatch       byte = 0x01
+	OpcodeFinEnvio    byte = 0x02
+	OpcodeConsulta    byte = 0x03
+)
+
+const (
+	AckOK             byte = 0x00
+	AckError          byte = 0x01
+	AckNotReady		  byte = 0x02
+)
+
 func Connect(address string) (*Protocolo, error) {
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
@@ -30,7 +43,7 @@ func Connect(address string) (*Protocolo, error) {
 
 func (p *Protocolo) EnviarApuesta(apuestas []Apuesta) error {
 	var payloadLines []string
-	
+
 	for _, apuesta := range apuestas {
 		line := fmt.Sprintf("%s|%s|%s|%s|%s|%s",
 			apuesta.Agencia,
@@ -63,10 +76,79 @@ func (p *Protocolo) EnviarApuesta(apuestas []Apuesta) error {
 	}
 
 	ack := make([]byte, 1)
-	if _, err := io.ReadFull(p.conn, ack); err != nil {
-		return err
+	io.ReadFull(p.conn, ack)
+	if ack[0] != AckOK {
+		return log.Errorf("Error from server: %v", ack[0])
 	}
 	return nil
+}
+}
+
+func (p *Protocolo) EnviarNotificacion(agencia string) error {
+	payload := append([]byte{OpcodeFinEnvio}, []byte(agencia)...)
+	l := uint32(len(payload))
+	header := []byte{
+		byte(l >> 24),
+		byte(l >> 16),
+		byte(l >> 8),
+		byte(l),
+	}
+
+	if _, err := p.conn.Write(header); err != nil {
+		return err
+	}
+
+	if _, err := p.conn.Write(payload); err != nil {
+		return err
+	}
+
+	ack := make([]byte, 1)
+	io.ReadFull(p.conn, ack)
+	if ack[0] != AckOK {
+		return log.Errorf("Error from server: %v", ack[0])
+	}
+	return nil
+}
+
+func (p *Protocolo) EnviarConsulta(agencia string) error {
+	payload := append([]byte{OpcodeConsulta}, []byte(agencia)...)
+	l := uint32(len(payload))
+	header := []byte{
+		byte(l >> 24),
+		byte(l >> 16),
+		byte(l >> 8),
+		byte(l),
+	}
+
+	if _, err := p.conn.Write(header); err != nil {
+		return err
+	}
+
+	if _, err := p.conn.Write(payload); err != nil {
+		return err
+	}
+
+	ack := make([]byte, 1)
+	io.ReadFull(p.conn, ack)
+	if ack[0] == AckNotReady {
+		return nil, ErrNotReady 
+	} else if ack[0] != AckOK {
+		return nil, fmt.Errorf("error al consultar ganadores")
+	}
+
+	respHeader := make([]byte, 4)
+	if _, err := io.ReadFull(p.conn, respHeader); err != nil {
+		return nil, err
+	}
+
+	respLen := uint32(respHeader[0])<<24 | uint32(respHeader[1])<<16 | uint32(respHeader[2])<<8 | uint32(respHeader[3])
+	if respLen == 0 {
+		return []string{}, nil
+	}
+
+	respPayload := make([]byte, respLen)
+	io.ReadFull(p.conn, respPayload)
+	return strings.Split(string(respPayload), ","), nil
 }
 
 func (p *Protocolo) Close() error {
