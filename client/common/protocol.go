@@ -33,9 +33,13 @@ const (
 	AckNotReady		  byte = 0x02
 )
 
+var ErrNotReady = fmt.Errorf("Sorteo no listo")
+
 func Connect(address string) (*Protocolo, error) {
 	conn, err := net.Dial("tcp", address)
-	if err != nil {
+	if err == nil {
+			return &Protocolo{conn: conn}, nil
+	}else  {
 		return nil, fmt.Errorf("error connecting to server: %w", err)
 	}
 	return &Protocolo{conn: conn}, nil
@@ -78,13 +82,12 @@ func (p *Protocolo) EnviarApuesta(apuestas []Apuesta) error {
 	ack := make([]byte, 1)
 	io.ReadFull(p.conn, ack)
 	if ack[0] != AckOK {
-		return log.Errorf("Error from server: %v", ack[0])
+		return fmt.Errorf("Error from server: %v", ack[0])
 	}
 	return nil
 }
-}
 
-func (p *Protocolo) EnviarNotificacion(agencia string) error {
+func (p *Protocolo) EnviarNotificacion(agencia string) ([]string, error) {
 	payload := append([]byte{OpcodeFinEnvio}, []byte(agencia)...)
 	l := uint32(len(payload))
 	header := []byte{
@@ -95,22 +98,22 @@ func (p *Protocolo) EnviarNotificacion(agencia string) error {
 	}
 
 	if _, err := p.conn.Write(header); err != nil {
-		return err
+		return nil, err
 	}
 
 	if _, err := p.conn.Write(payload); err != nil {
-		return err
+		return nil, err
 	}
 
 	ack := make([]byte, 1)
 	io.ReadFull(p.conn, ack)
 	if ack[0] != AckOK {
-		return log.Errorf("Error from server: %v", ack[0])
+		return nil, fmt.Errorf("Error from server: %v", ack[0])
 	}
-	return nil
+	return nil, nil
 }
 
-func (p *Protocolo) EnviarConsulta(agencia string) error {
+func (p *Protocolo) EnviarConsulta(agencia string) ([]string, error) {
 	payload := append([]byte{OpcodeConsulta}, []byte(agencia)...)
 	l := uint32(len(payload))
 	header := []byte{
@@ -121,11 +124,11 @@ func (p *Protocolo) EnviarConsulta(agencia string) error {
 	}
 
 	if _, err := p.conn.Write(header); err != nil {
-		return err
+		return nil, err
 	}
 
 	if _, err := p.conn.Write(payload); err != nil {
-		return err
+		return nil, err
 	}
 
 	ack := make([]byte, 1)
@@ -133,7 +136,7 @@ func (p *Protocolo) EnviarConsulta(agencia string) error {
 	if ack[0] == AckNotReady {
 		return nil, ErrNotReady 
 	} else if ack[0] != AckOK {
-		return nil, fmt.Errorf("error al consultar ganadores")
+		return nil, fmt.Errorf("Error from server: %v", ack[0])
 	}
 
 	respHeader := make([]byte, 4)

@@ -107,12 +107,11 @@ func (c *Client) StartClientLoop() {
 			log.Infof("action: recibir_ganadores | result: not_ready | client_id: %v", c.config.ID)
 			time.Sleep(c.config.LoopPeriod)
 			continue
-		}
-		else if err != nil {
+		} else if err != nil {
 			log.Errorf("action: recibir_ganadores | result: fail | client_id: %v | error: %v", c.config.ID, err)
 			return
 		}
-		log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %d", len(dnis))
+		log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %d", len(dni))
 		break
 	}
 }
@@ -133,7 +132,7 @@ func (c *Client) enviarBatch(batch []Apuesta) {
 	log.Infof("action: enviar_apuesta | result: success | client_id: %v | batch_size: %v", c.config.ID, len(batch))
 }
 
-func enviarNotificacion(agencia string) {
+func (c *Client) enviarNotificacion(agencia string) {
 	protocolo, err := Connect(c.config.ServerAddress)
 	if err != nil {
 		log.Errorf("action: conectar_servidor | result: fail | client_id: %v | error: %v", c.config.ID, err)
@@ -143,12 +142,12 @@ func enviarNotificacion(agencia string) {
 	protocolo.EnviarNotificacion(agencia)
 }
 
-func recibirGanadores() ([]string, error) {
+func (c *Client) recibirGanadores() ([]string, error) {
 	protocolo, err := Connect(c.config.ServerAddress)
 	if err != nil {
 		log.Errorf("action: conectar_servidor | result: fail | client_id: %v | error: %v", c.config.ID, err)
 		return nil, err
 	}
 	defer protocolo.Close()
-	return protocolo.EnviarConsulta()
+	return protocolo.EnviarConsulta(c.config.ID)
 }
