@@ -89,7 +89,6 @@ class Server:
 
 
         except Exception as e:
-            logging.error(f"action: apuesta_recibida | result: fail | cantidad: {len(data_apuestas) if data_apuestas else 0}")
             logging.error(f"action: handle_connection | result: fail | error: {e}")
         finally:
             client_sock.close()
