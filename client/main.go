@@ -95,11 +95,6 @@ func PrintConfig(v *viper.Viper) {
 		v.GetInt("loop.amount"),
 		v.GetDuration("loop.period"),
 		v.GetString("log.level"),
-		v.GetString("nombre"),
-		v.GetString("apellido"),
-		v.GetString("documento"),
-		v.GetString("nacimiento"),
-		v.GetString("numero"),
 	)
 }
 
@@ -121,6 +116,11 @@ func main() {
 		ID:            v.GetString("id"),
 		LoopAmount:    v.GetInt("loop.amount"),
 		LoopPeriod:    v.GetDuration("loop.period"),
+		Nombre:        v.GetString("nombre"),
+		Apellido:      v.GetString("apellido"),
+		Documento:     v.GetString("documento"),
+		Nacimiento:    v.GetString("nacimiento"),
+		Numero:        v.GetString("numero"),
 	}
 
 	client := common.NewClient(clientConfig)
