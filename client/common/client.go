@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/csv"
 	"net"
 	"time"
 
@@ -55,56 +56,58 @@ func (c *Client) createClientSocket() error {
 
 // StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop() {
-	// There is an autoincremental msgID to identify every message sent
-	// Messages if the message amount threshold has not been surpassed
-	apuesta := Apuesta{
-		Agencia:    c.config.ID,
-		Nombre:     c.config.Nombre,
-		Apellido:   c.config.Apellido,
-		Documento:  c.config.Documento,
-		Nacimiento: c.config.Nacimiento,
-		Numero:     c.config.Numero,
+
+	file, err := os.Open("/data/agency.csv")
+	if err != nil {
+		log.Errorf("action: abrir_archivo | result: fail | error: %v", err)
+		return
 	}
-	log.Infof(
-		"action: start_client_loop | result: success | client_id: %v | loop_amount: %v | loop_period: %v",
-		c.config.ID,
-		c.config.LoopAmount,
-		c.config.LoopPeriod,
-	)
-	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
-		// Create the connection the server in every loop iteration. Send an
-		protocol, err := Connect(c.config.ServerAddress)
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	var batch []Apuesta
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
-			log.Errorf(
-				"action: connect | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-			continue
+			log.Errorf("action: leer_archivo | result: fail | error: %v", err)
+			return
 		}
 
-		log.Infof(
-			"action: connect | result: success | client_id: %v | server_address: %v",
-			c.config.ID,
-			c.config.ServerAddress,
-		)
-		err = protocol.EnviarApuesta(apuesta)
-		if err != nil {
-			log.Errorf(
-				"action: enviar_apuesta | result: fail | error: %v",
-				err,
-			)
-		} else {
-			log.Infof(
-				"action: apuesta_enviada | result: success | dni: %s | numero: %s",
-				c.config.Documento,
-				c.config.Numero,
-			)
+
+		apuesta := Apuesta{
+			Agencia:    c.config.ID,
+			Nombre:     c.config.Nombre,
+			Apellido:   c.config.Apellido,
+			Documento:  c.config.Documento,
+			Nacimiento: c.config.Nacimiento,
+			Numero:     c.config.Numero,
 		}
-		// TODO: Modify the send to avoid short-write
-		protocol.Close()
+		batch = append(batch, apuesta)
 		
-		time.Sleep(c.config.LoopPeriod)
+		if len(batch) >= c.config.BatchMaxAmount {
+			c.enviarBatch(batch)
+			batch = []Apuesta{}
 
+			time.Sleep(c.config.LoopPeriod)
+		}
 	}
+}
+
+func (c *Client) enviarBatch(batch []Apuesta) {
+	protocolo, err := Connect(c.config.ServerAddress)
+	if err != nil {
+		log.Errorf("action: conectar_servidor | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		return
+	}
+	defer protocolo.Close()
+
+	if err := protocolo.EnviarApuesta(batch); err != nil {
+		log.Errorf("action: enviar_apuesta | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		return
+	}
+
+	log.Infof("action: enviar_apuesta | result: success | client_id: %v | batch_size: %v", c.config.ID, len(batch))
 }

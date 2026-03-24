@@ -49,16 +49,20 @@ class Server:
         try:
             protocolo = Protocolo(client_sock)
             logging.info("action: handle_connection | result: in_progress")
-            data_apuesta = protocolo.recibir_apuesta()
+            data_apuestas = protocolo.recibir_batch()
 
-            if data_apuesta:
-                bet = Bet(**data_apuesta)
-                store_bets([bet])
-                protocolo.enviar_ack()
+            if data_apuestas:
+                try:
+                    bets = [Bet(**data_apuesta) for data_apuesta in data_apuestas]
+                    store_bets(bets)
+                    protocolo.enviar_ack()
 
-                logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
+                    logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+                except Exception as e:
+                    logging.error(f"action: apuesta_recibida | result: fail | cantidad: {len(data_apuestas) if data_apuestas else 0}")
 
         except Exception as e:
+            logging.error(f"action: apuesta_recibida | result: fail | cantidad: {len(data_apuestas) if data_apuestas else 0}")
             logging.error(f"action: handle_connection | result: fail | error: {e}")
         finally:
             client_sock.close()

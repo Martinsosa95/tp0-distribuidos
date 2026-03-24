@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 )
 
 type Apuesta struct {
@@ -27,17 +28,22 @@ func Connect(address string) (*Protocolo, error) {
 	return &Protocolo{conn: conn}, nil
 }
 
-func (p *Protocolo) EnviarApuesta(apuesta Apuesta) error {
-
-	payloadStr := fmt.Sprintf("%s|%s|%s|%s|%s|%s",
-		apuesta.Agencia,
-		apuesta.Nombre,
-		apuesta.Apellido,
-		apuesta.Documento,
-		apuesta.Nacimiento,
-		apuesta.Numero,
-	)
-
+func (p *Protocolo) EnviarApuesta(apuestas []Apuesta) error {
+	var payloadLines []string
+	
+	for _, apuesta := range apuestas {
+		line := fmt.Sprintf("%s|%s|%s|%s|%s|%s",
+			apuesta.Agencia,
+			apuesta.Nombre,
+			apuesta.Apellido,
+			apuesta.Documento,
+			apuesta.Nacimiento,
+			apuesta.Numero,
+		)
+		payloadLines = append(payloadLines, line)
+	}
+	
+	payloadStr := strings.Join(payloadLines, "\n")
 	payload := []byte(payloadStr)
 
 	l := uint32(len(payload))
