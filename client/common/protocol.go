@@ -61,7 +61,7 @@ func (p *Protocolo) EnviarApuesta(apuestas []Apuesta) error {
 	}
 	
 	payloadStr := strings.Join(payloadLines, "\n")
-	payload := []byte(payloadStr)
+	payload := append([]byte{OpcodeBatch}, []byte(payloadStr)...)
 
 	l := uint32(len(payload))
 	header := []byte{

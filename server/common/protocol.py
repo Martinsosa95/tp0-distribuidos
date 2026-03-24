@@ -55,6 +55,7 @@ class Protocolo:
 
         elif opcode == self.NOTIFICACION or opcode == self.CONSULTA:
             return opcode, cuerpo.decode('utf-8')
+        return None, None
     
     def parse_bet_line(self, line):
         fields = line.split('|')
