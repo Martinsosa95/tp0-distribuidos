@@ -104,7 +104,7 @@ func (c *Client) StartClientLoop() {
 		dni, err := c.recibirGanadores()
 
 		if err == ErrNotReady {
-			log.Infof("action: recibir_ganadores | result: not_ready | client_id: %v", c.config.ID)
+			log.Infof("action: recibir_ganadores | result: in_progress | client_id: %v", c.config.ID)
 			time.Sleep(c.config.LoopPeriod)
 			continue
 		} else if err != nil {
