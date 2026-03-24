@@ -1,6 +1,8 @@
 import socket
 import logging
 import signal
+from common.protocol import Protocolo
+from common.utils import Bet, store_bets
 
 
 class Server:
@@ -45,16 +47,22 @@ class Server:
         client socket will also be closed
         """
         try:
-            # TODO: Modify the receive to avoid short-reads
-            msg = client_sock.recv(1024).rstrip().decode('utf-8')
-            addr = client_sock.getpeername()
-            logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
-            # TODO: Modify the send to avoid short-writes
-            client_sock.send("{}\n".format(msg).encode('utf-8'))
-        except OSError as e:
-            logging.error("action: receive_message | result: fail | error: {e}")
+            protocolo = Protocolo(client_sock)
+
+            data_apuesta = protocolo.recibir_apuesta()
+
+            if data_apuesta:
+                bet = Bet(**data_apuesta)
+                store_bets([bet])
+                protocolo.enviar_ack()
+
+                logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
+
+        except Exception as e:
+            logging.error(f"action: handle_connection | result: fail | error: {e}")
         finally:
             client_sock.close()
+            logging.info("action: close_resource | result: success | resource: client_socket")
 
     def __accept_new_connection(self):
         """
@@ -76,4 +84,3 @@ class Server:
             else:
                 logging.error(f'action: accept_connections | result: fail | error: {e}')
                 raise e
-        
