@@ -81,7 +81,7 @@ func (c *Client) StartClientLoop() {
 		err = protocol.EnviarApuesta(apuesta)
 		if err != nil {
 			log.Errorf(
-				"action: send_message | result: fail | error: %v",
+				"action: enviar_apuesta | result: fail | error: %v",
 				err,
 			)
 		} else {
