@@ -28,7 +28,7 @@ class Protocolo:
             'first_name': fields[1],
             'last_name': fields[2],
             'document': fields[3],
-            'birth_date': fields[4],
+            'birthdate': fields[4],
             'number': fields[5],
         }
 
