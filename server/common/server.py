@@ -6,7 +6,7 @@ from common.utils import Bet, store_bets, SUCCESS_ACK, ERROR_ACK, NOT_READY_ACK,
 
 
 class Server:
-    def __init__(self, port, listen_backlog, expected_agencies):
+    def __init__(self, port, listen_backlog):
         # Initialize server socket
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
@@ -14,8 +14,8 @@ class Server:
         self._running = True
         signal.signal(signal.SIGTERM, self.__handle_signal)
 
-        self.expected_agencies = expected_agencies
-        self.agencies_finished = 0
+        self.agencies = set()
+        self.agencies_finished = set()
         self.sorteo = False
 
     def __handle_signal(self, signum, frame):
@@ -58,6 +58,10 @@ class Server:
             if opcode == Protocolo.BATCH_APUESTAS and data_apuestas:
                 try:
                     bets = [Bet(**data_apuesta) for data_apuesta in data_apuestas]
+
+                    for bet in bets:
+                        self.agencies.add(bet.agency)
+                    
                     store_bets(bets)
                     protocolo.enviar_ack(SUCCESS_ACK)
                     logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
@@ -66,7 +70,7 @@ class Server:
                     protocolo.enviar_ack(ERROR_ACK)
             elif opcode == Protocolo.NOTIFICACION and data_apuestas:
                 self.agencies_finished += 1
-                if self.agencies_finished == self.expected_agencies:
+                if self.agencies_finished == self.agencies:
                     self.sorteo = True
                     logging.info("action: sorteo | result: success")
                 protocolo.enviar_ack(SUCCESS_ACK)
