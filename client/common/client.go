@@ -86,7 +86,7 @@ func (c *Client) StartClientLoop() {
 			)
 		} else {
 			log.Infof(
-				"action: send_message | result: success | dni: %s | numero: %s",
+				"action: apuesta_enviada | result: success | dni: %s | numero: %s",
 				c.config.Documento,
 				c.config.Numero,
 			)
