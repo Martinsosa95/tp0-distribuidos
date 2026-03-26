@@ -1,5 +1,25 @@
 # TP0: Docker + Comunicaciones + Concurrencia
 
+## Cómo ejecutar este ejercicio
+
+El proyecto cuenta con un entorno dockerizado y validaciones mediante pruebas automáticas de caja negra provistas por la cátedra.
+
+Para levantar el clúster de forma manual (1 Servidor y N Clientes), utilizar primero el script generador para crear el archivo de configuración y luego levante los contenedores:
+
+`./generador.py <cantidad_de_clientes>`
+`docker compose up --build`
+
+## Detalles de Implementación 
+## Parte 1: Introducción a Docker
+En esta etapa inicial, el trabajo se centró en la puesta en marcha y validación del entorno de desarrollo provisto. 
+
+### Ejercicio 1
+Se desarrolló un script (generador.py) que actúa como motor de plantillas. Recibe por parámetro la cantidad de clientes (agencias) deseada y genera dinámicamente un archivo docker-compose.yaml válido. 
+A cada cliente se le inyecta una variable de entorno CLI_ID única para que, compartiendo la misma imagen Docker de Go, cada contenedor esté identificado.
+
+
+------------------------------------------------------------------------------
+
 En el presente repositorio se provee un esqueleto básico de cliente/servidor, en donde todas las dependencias del mismo se encuentran encapsuladas en containers. Los alumnos deberán resolver una guía de ejercicios incrementales, teniendo en cuenta las condiciones de entrega descritas al final de este enunciado.
 
  El cliente (Golang) y el servidor (Python) fueron desarrollados en diferentes lenguajes simplemente para mostrar cómo dos lenguajes de programación pueden convivir en el mismo proyecto con la ayuda de containers, en este caso utilizando [Docker Compose](https://docs.docker.com/compose/).
