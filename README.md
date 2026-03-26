@@ -1,5 +1,83 @@
 # TP0: Docker + Comunicaciones + Concurrencia
 
+## Cómo ejecutar este ejercicio
+
+El proyecto cuenta con un entorno dockerizado y validaciones mediante pruebas automáticas de caja negra provistas por la cátedra.
+
+Para levantar el clúster de forma manual (1 Servidor y N Clientes), utilizar primero el script generador para crear el archivo de configuración y luego levante los contenedores:
+
+`./generador.py <cantidad_de_clientes>`
+`docker compose up --build`
+
+## Detalles de Implementación 
+## Parte 1: Introducción a Docker
+En esta etapa inicial, el trabajo se centró en la puesta en marcha y validación del entorno de desarrollo provisto. 
+
+### Ejercicio 1
+Se desarrolló un script (generador.py) que actúa como motor de plantillas. Recibe por parámetro la cantidad de clientes (agencias) deseada y genera dinámicamente un archivo docker-compose.yaml válido. 
+A cada cliente se le inyecta una variable de entorno CLI_ID única para que, compartiendo la misma imagen Docker de Go, cada contenedor esté identificado.
+
+### Ejercicio 2
+Se desacoplo la configuración del código fuente. Los archivos config.yaml y config.ini, ahora estan montados en los containers de Docker utilizando docker volumes.
+
+### Ejercicio 3
+Se construyó el script validar-echo-server.sh, el cual levanta un container efímero de busybox dentro de la misma red (testing_net) para comunicarse con el servidor utilizando netcat.
+
+### Ejercicio 4
+Se implementó la captura de la señal SIGTERM tanto en el cliente (usando canales de OS signals en Go) como en el servidor (usando el módulo signal en Python). 
+Al recibir la señal, las aplicaciones detienen sus bucles principales y proceden a cerrar limpiamente los file descriptors y los sockets de red antes de finalizar el proceso, evitando fugas de memoria y puertos bloqueados.
+
+## Parte 2: Repaso de Comunicaciones
+
+Para resolver la transmisión de datos a través de sockets TCP, se diseñó e implementó un protocolo de capa de aplicación binario y stateful (se mantiene la conexión viva por cliente durante toda la transmisión).
+
+### Ejercicio 5
+
+Para mitigar los fenómenos de Short Read y Short Write, todo mensaje enviado desde el Cliente hacia el Servidor está estructurado en dos partes:
+
+    1- Header (4 bytes): Un entero sin signo codificado en Big Endian que indica el tamaño exacto en bytes del Payload subsiguiente. El receptor lee exactamente esta cantidad de bytes antes de procesar el mensaje.
+
+    2- Payload (N bytes): El cuerpo del mensaje.
+
+### Ejercicio 6
+
+Para evitar la saturación de la red abriendo conexiones por cada apuesta, el cliente lee el archivo .csv (montado por volumen según el número de agencia) y agrupa las apuestas en memoria (Batches).
+
+Límite de 8kB: Se configuró el batch.maxAmount a un valor óptimo y seguro (100). Dado que una apuesta típica pesa aprox. 70 bytes, un paquete de 100 apuestas pesa ~7000 bytes. Esta decisión de diseño permite aprovechar al máximo la capacidad de transmisión por paquete sin violar la restricción estricta de 8kB exigida por la cátedra. El Payload de un batch consiste en las apuestas unidas por el salto de línea
+
+### Ejercicio 7
+
+Se integró un byte identificador (Opcode) al inicio exacto de cada Payload para que el servidor pueda multiplexar las acciones requeridas por las agencias:
+
+    Opcode 0x01 (Batch de Apuestas).
+
+    Opcode 0x02 (Notificación de Fin): El cliente informa que finalizó el envío del archivo.
+
+    Opcode 0x03 (Consulta Ganadores): El cliente inicia el proceso de lectura de premios.
+
+Mecanismo de Polling:
+El sorteo exige que todas las agencias terminen de enviar datos. Como el servidor desconoce cuántas agencias existen a priori, utiliza "Descubrimiento Dinámico": anota en un set a cada agencia nueva que le envía un batch.
+Cuando un cliente termina, envía el Opcode 0x02 y luego envía repetidamente el Opcode 0x03 para consultar ganadores. Si el servidor detecta que faltan agencias por finalizar, responde con un ACK_NOT_READY (0x02). El cliente interpreta este código, duerme el proceso por un breve lapso y reintenta hasta que el sorteo se efectúa y recibe los datos.
+
+
+## Parte 3: Repaso de Concurrencia
+
+### Ejercicio 8 
+
+Para soportar múltiples agencias reportando de manera concurrente, el servidor iterativo fue refactorizado hacia una arquitectura de Multithreading utilizando la librería nativa threading.
+
+Modelo de Hilos y el GIL: El hilo principal ejecuta el accept() bloqueante. Al ingresar una conexión, delega el socket a un nuevo Thread dedicado a ese cliente. Si bien Python está limitado por el Global Interpreter Lock (GIL), las operaciones son estrictamente I/O Bound (lecturas de red y escritura en disco de sistema de archivos), operaciones en las cuales el GIL es liberado por el intérprete.
+
+Mecanismos de Sincronización (Exclusión Mutua)
+
+Dado que múltiples hilos operan simultáneamente, se implementaron candados (threading.Lock) para proteger las secciones críticas y evitar Condiciones de Carrera (Race Conditions):
+
+State Lock (self.state_lock): Protege las estructuras de datos en memoria del servidor. Garantiza que el chequeo de si todas las agencias terminaron sea una operación atómica, impidiendo que el evento del Sorteo se dispare dos veces si dos clientes notifican su fin en el mismo milisegundo.
+
+File Lock (self.file_lock): Protege el recurso crítico en disco (bets.csv). Las funciones provistas (store_bets y load_bets) operan sobre el archivo físico. Como múltiples hilos reciben batches en paralelo, el File Lock garantiza que la persistencia sea atómica. Evita la corrupción del archivo por escrituras simultáneas y asegura lecturas consistentes durante el posterior cálculo de los ganadores.
+
+-----------------------------------------------------------------------
+
 En el presente repositorio se provee un esqueleto básico de cliente/servidor, en donde todas las dependencias del mismo se encuentran encapsuladas en containers. Los alumnos deberán resolver una guía de ejercicios incrementales, teniendo en cuenta las condiciones de entrega descritas al final de este enunciado.
 
  El cliente (Golang) y el servidor (Python) fueron desarrollados en diferentes lenguajes simplemente para mostrar cómo dos lenguajes de programación pueden convivir en el mismo proyecto con la ayuda de containers, en este caso utilizando [Docker Compose](https://docs.docker.com/compose/).
