@@ -61,45 +61,64 @@ class Server:
         If a problem arises in the communication with the client, the
         client socket will also be closed
         """
+        
         try:
             protocolo = Protocolo(client_sock)
             logging.info("action: handle_connection | result: in_progress")
-            opcode, data_apuestas = protocolo.recibir_mensaje()
 
-            if opcode == Protocolo.BATCH_APUESTAS and data_apuestas:
-                try:
-                    bets = [Bet(**data_apuesta) for data_apuesta in data_apuestas]
+            while self._running:
+                opcode, data_apuestas = protocolo.recibir_mensaje()
+
+                if opcode is None:
+                    break
+                if opcode == Protocolo.BATCH_APUESTAS and data_apuestas:
+                    try:
+                        bets = [Bet(**data_apuesta) for data_apuesta in data_apuestas]
+
+                        with self.state_lock:
+                            for bet in bets:
+                                self.agencies.add(bet.agency)
+
+                        with self.file_lock:
+                            store_bets(bets)
+
+                        protocolo.enviar_ack(SUCCESS_ACK)
+
+                        logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+
+                    except Exception as _:
+                        logging.error(f"action: apuesta_recibida | result: fail | cantidad: {len(data_apuestas) if data_apuestas else 0}")
+                        protocolo.enviar_ack(ERROR_ACK)
+
+                elif opcode == Protocolo.NOTIFICACION and data_apuestas:
+                    agencia_id = int(data_apuestas)
+
                     with self.state_lock:
-                        for bet in bets:
-                            self.agencies.add(bet.agency)
-                    with self.file_lock:
-                        store_bets(bets)
+                        self.agencies_finished.add(agencia_id)
+                        if len(self.agencies_finished) == len(self.agencies) and len(self.agencies) > 0:
+                            self.sorteo = True
+                            logging.info("action: sorteo | result: success")
+
                     protocolo.enviar_ack(SUCCESS_ACK)
-                    logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
-                except Exception as e:
-                    logging.error(f"action: apuesta_recibida | result: fail | cantidad: {len(data_apuestas) if data_apuestas else 0}")
-                    protocolo.enviar_ack(ERROR_ACK)
-            elif opcode == Protocolo.NOTIFICACION and data_apuestas:
-                agencia_id = int(data_apuestas)
-                self.agencies_finished.add(agencia_id)
-                if len(self.agencies_finished) == len(self.agencies):
-                    self.sorteo = True
-                    logging.info("action: sorteo | result: success")
-                protocolo.enviar_ack(SUCCESS_ACK)
-            elif opcode == Protocolo.CONSULTA and data_apuestas:
-                if self.sorteo:
-                    agencia_id = data_apuestas
-                    ganadores = []
-                    with self.file_lock:
-                        for bet in load_bets():
-                            if bet.agency == int(agencia_id) and has_won(bet):
-                                ganadores.append(bet.document)
-                    protocolo.enviar_ganadores(ganadores)
-                else:
-                    protocolo.enviar_ack(NOT_READY_ACK)
-                    logging.info("action: consulta_recibida | result: success | sorteo_listo: false")
 
+                elif opcode == Protocolo.CONSULTA and data_apuestas:
+                    with self.state_lock:
+                        sorteo_listo = self.sorteo
 
+                    if sorteo_listo:
+                        agencia_id = data_apuestas
+                        ganadores = []
+
+                        with self.file_lock:
+                            for bet in load_bets():
+                                if bet.agency == int(agencia_id) and has_won(bet):
+                                    ganadores.append(bet.document)
+
+                        protocolo.enviar_ganadores(ganadores)
+                        break
+                    else:
+                        protocolo.enviar_ack(NOT_READY_ACK)
+                        logging.info("action: consulta_recibida | result: success | sorteo_listo: false")
 
         except Exception as e:
             logging.error(f"action: handle_connection | result: fail | error: {e}")
