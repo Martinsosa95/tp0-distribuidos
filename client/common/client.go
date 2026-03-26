@@ -55,6 +55,13 @@ func (c *Client) createClientSocket() error {
 // StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop() {
 
+	protocolo, err := Connect(c.config.ServerAddress)
+	if err != nil {
+		log.Errorf("action: conectar_servidor | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		return
+	}
+	defer protocolo.Close()
+
 	file, err := os.Open("/data/agency.csv")
 	if err != nil {
 		log.Errorf("action: abrir_archivo | result: fail | error: %v", err)
@@ -86,7 +93,11 @@ func (c *Client) StartClientLoop() {
 		batch = append(batch, apuesta)
 		
 		if len(batch) >= c.config.BatchMaxAmount {
-			c.enviarBatch(batch)
+			if err := protocolo.EnviarApuesta(batch); err != nil {
+				log.Errorf("action: enviar_apuesta | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			} else {
+				log.Infof("action: enviar_apuesta | result: success | client_id: %v | batch_size: %v", c.config.ID, len(batch))
+			}
 			batch = []Apuesta{}
 
 			time.Sleep(c.config.LoopPeriod)
@@ -94,14 +105,18 @@ func (c *Client) StartClientLoop() {
 
 	}
 	if len(batch) > 0 {
-		c.enviarBatch(batch)
+			if err := protocolo.EnviarApuesta(batch); err != nil {
+				log.Errorf("action: enviar_apuesta | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			} else {
+				log.Infof("action: enviar_apuesta | result: success | client_id: %v | batch_size: %v", c.config.ID, len(batch))
+			}
 	}
 
-	c.enviarNotificacion(c.config.ID)
+	protocolo.EnviarNotificacion(c.config.ID)
 
 	for{
 
-		dni, err := c.recibirGanadores()
+		dni, err := protocolo.EnviarConsulta(c.config.ID)
 
 		if err == ErrNotReady {
 			log.Infof("action: recibir_ganadores | result: in_progress | client_id: %v", c.config.ID)
@@ -130,24 +145,4 @@ func (c *Client) enviarBatch(batch []Apuesta) {
 	}
 
 	log.Infof("action: enviar_apuesta | result: success | client_id: %v | batch_size: %v", c.config.ID, len(batch))
-}
-
-func (c *Client) enviarNotificacion(agencia string) {
-	protocolo, err := Connect(c.config.ServerAddress)
-	if err != nil {
-		log.Errorf("action: conectar_servidor | result: fail | client_id: %v | error: %v", c.config.ID, err)
-		return
-	}
-	defer protocolo.Close()
-	protocolo.EnviarNotificacion(agencia)
-}
-
-func (c *Client) recibirGanadores() ([]string, error) {
-	protocolo, err := Connect(c.config.ServerAddress)
-	if err != nil {
-		log.Errorf("action: conectar_servidor | result: fail | client_id: %v | error: %v", c.config.ID, err)
-		return nil, err
-	}
-	defer protocolo.Close()
-	return protocolo.EnviarConsulta(c.config.ID)
 }
